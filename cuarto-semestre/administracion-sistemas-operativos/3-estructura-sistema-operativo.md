@@ -20,11 +20,11 @@ No todos los SO tienen la misma organización interna. La elección de arquitect
   MODELOS DE ESTRUCTURA DE UN SO
   ┌──────────────────────────────────────────────────────────────┐
   │                                                              │
-  │  Monolítico  →  En capas  →  Microkernel  →  Distribuido    │
-  │                     │                                       │
-  │               Virtualización  ←─── Exokernel               │
+  │  Monolítico  →  En capas  →  Microkernel  →  Distribuido     │
+  │                     │                                        │
+  │               Virtualización  ←─── Exokernel                 │
   │                                                              │
-  │  (menos estructurado)          (más estructurado/modular)   │
+  │  (menos estructurado)          (más estructurado/modular)    │
   └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -49,7 +49,7 @@ El ejemplo más conocido es el **kernel de Linux** (por ser código abierto).
   │      ▼               │               ▼          │
   │  rutina_B() ◀────────┼───────▶ rutina_E()      │
   │      │               │               │          │
-  │      └───────▶ rutina_C() ◀──────────┘          │
+  │      └───────▶ rutina_C() ◀─────────┘          │
   │                                                 │
   │  Cualquier rutina puede llamar a cualquier otra │
   │  en cualquier momento. Sin ocultamiento.        │
@@ -123,7 +123,7 @@ MULTICS usó un diseño similar pero en forma de **anillos concéntricos**:
 
 ```
   ┌──────────────────────────────────────┐
-  │  Anillo 3 (usuarios - menos priv.)  │
+  │  Anillo 3 (usuarios - menos priv.)   │
   │  ┌────────────────────────────────┐  │
   │  │  Anillo 2 (servicios)          │  │
   │  │  ┌──────────────────────────┐  │  │
@@ -257,16 +257,16 @@ La evolución natural del diseño de SO tiende a **aislar el kernel** dejando en
 ### Arquitectura
 
 ```
-  ┌────────────────────────────────────────────────────────┐
-  │                  ESPACIO DE USUARIO                    │
-  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │
-  │  │ Servidor │ │ Servidor │ │ Servidor │ │ Cliente  │  │
-  │  │ ficheros │ │  memoria │ │  red     │ │ (app)    │  │
-  │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘  │
-  │       │            │            │             │        │
-  └───────┼────────────┼────────────┼─────────────┼────────┘
+  ┌─────────────────────────────────────────────────────────┐
+  │                  ESPACIO DE USUARIO                     │
+  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐    │
+  │  │ Servidor │ │ Servidor │ │ Servidor │ │ Cliente  │    │
+  │  │ ficheros │ │  memoria │ │  red     │ │ (app)    │    │
+  │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘    │
+  │       │            │            │             │         │
+  └───────┼────────────┼────────────┼─────────────┼─────────┘
           │            │            │             │
-  ┌───────▼────────────▼────────────▼─────────────▼────────┐
+  ┌───────▼────────────▼────────────▼─────────────▼─────────┐
   │                    MICROKERNEL                          │
   │  (IPC, planificación básica, gestión mínima de memoria) │
   ├─────────────────────────────────────────────────────────┤
