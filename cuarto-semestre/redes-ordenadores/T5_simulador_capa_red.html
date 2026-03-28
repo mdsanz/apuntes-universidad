@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador – La Capa de Red</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f4f7fb; --panel:#ffffff; --panel2:#eef2f8; --border:#d0d9e8;
+  --text:#1e2a3a; --muted:#6b7a93;
+  --blue:#2563eb; --blue-dim:#dbeafe; --blue-mid:#93c5fd;
+  --green:#16a34a; --green-dim:#dcfce7; --green-mid:#86efac;
+  --amber:#b45309; --amber-dim:#fef3c7; --amber-mid:#fcd34d;
+  --red:#dc2626; --red-dim:#fee2e2; --red-mid:#fca5a5;
+  --purple:#7c3aed; --purple-dim:#ede9fe; --purple-mid:#c4b5fd;
+  --teal:#0d9488; --teal-dim:#ccfbf1;
+  --shadow:0 1px 4px rgba(30,42,58,0.08),0 4px 16px rgba(30,42,58,0.06);
+  --shadow-sm:0 1px 3px rgba(30,42,58,0.07);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(37,99,235,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,0.04) 1px,transparent 1px);background-size:36px 36px;pointer-events:none;z-index:0;}
+.app{position:relative;z-index:1;}
+/* HEADER */
+.header{background:var(--panel);border-bottom:1.5px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm);}
+.header-brand{display:flex;align-items:center;gap:12px;}
+.brand-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--blue),var(--teal));border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 2px 8px rgba(37,99,235,0.25);}
+.brand-title{font-size:1rem;font-weight:800;color:var(--text);}
+.brand-sub{font-size:0.71rem;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.tab-bar{display:flex;gap:4px;background:var(--panel2);border:1.5px solid var(--border);border-radius:11px;padding:4px;}
+.tab-btn{padding:7px 16px;border:none;background:none;color:var(--muted);font-family:'Outfit',sans-serif;font-size:0.82rem;font-weight:700;border-radius:8px;cursor:pointer;transition:all .18s;white-space:nowrap;}
+.tab-btn.active{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.3);}
+.tab-btn:hover:not(.active){background:var(--panel);color:var(--text);}
+/* MAIN */
+.main{padding:28px;max-width:1200px;margin:0 auto;}
+.sim-section{display:none;} .sim-section.active{display:block;}
+.section-header{margin-bottom:22px;}
+.section-header h2{font-size:1.45rem;font-weight:800;color:var(--text);margin-bottom:6px;}
+.section-header p{font-size:0.87rem;color:var(--muted);line-height:1.65;}
+/* PANELS */
+.panel{background:var(--panel);border:1.5px solid var(--border);border-radius:16px;padding:22px;margin-bottom:20px;box-shadow:var(--shadow);}
+.panel-title{font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.panel-title::after{content:'';flex:1;height:1px;background:var(--border);}
+/* BUTTONS */
+.btn{padding:9px 20px;border:none;border-radius:9px;font-family:'Outfit',sans-serif;font-size:0.87rem;font-weight:700;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:7px;}
+.btn-blue{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.28);}
+.btn-blue:hover{background:#1d4ed8;}
+.btn-green{background:var(--green);color:#fff;box-shadow:0 2px 8px rgba(22,163,74,.25);}
+.btn-green:hover{background:#15803d;}
+.btn-ghost{background:var(--panel2);color:var(--muted);border:1.5px solid var(--border);}
+.btn-ghost:hover{color:var(--text);border-color:var(--blue);background:var(--blue-dim);}
+.btn-row{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap;}
+/* INFO BOXES */
+.info-box{border-radius:10px;padding:11px 15px;font-size:0.83rem;line-height:1.65;border-left:4px solid;margin-bottom:14px;}
+.info-blue{background:var(--blue-dim);border-color:var(--blue);color:#1e3a8a;}
+.info-green{background:var(--green-dim);border-color:var(--green);color:#14532d;}
+.info-amber{background:var(--amber-dim);border-color:var(--amber);color:#78350f;}
+.info-purple{background:var(--purple-dim);border-color:var(--purple);color:#4c1d95;}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;}
+.stat-card{background:var(--panel2);border:1.5px solid var(--border);border-radius:12px;padding:14px;text-align:center;}
+.stat-val{font-family:'JetBrains Mono',monospace;font-size:1.7rem;font-weight:700;line-height:1;margin-bottom:4px;}
+.stat-lbl{font-size:0.71rem;color:var(--muted);font-weight:600;}
+/* LOG */
+.log-area{background:var(--panel2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;height:130px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:0.74rem;line-height:1.9;}
+.log-entry{display:flex;gap:10px;}
+.log-time{color:var(--muted);flex-shrink:0;}
+.log-blue{color:var(--blue);} .log-green{color:var(--green);} .log-amber{color:var(--amber);} .log-purple{color:var(--purple);} .log-red{color:var(--red);}
+/* SIM 1 */
+.switch-controls{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+.mode-btn{padding:9px 20px;border:1.5px solid var(--border);background:var(--panel2);color:var(--muted);border-radius:10px;font-family:'Outfit',sans-serif;font-size:0.84rem;font-weight:700;cursor:pointer;transition:all .18s;}
+.mode-btn.active-blue{border-color:var(--blue);background:var(--blue-dim);color:var(--blue);}
+.mode-btn.active-green{border-color:var(--green);background:var(--green-dim);color:var(--green);}
+.mode-btn.active-purple{border-color:var(--purple);background:var(--purple-dim);color:var(--purple);}
+.mode-btn:hover{border-color:var(--blue);background:var(--blue-dim);color:var(--blue);}
+.network-area{position:relative;background:var(--panel2);border:1.5px solid var(--border);border-radius:14px;height:340px;overflow:hidden;margin-bottom:16px;}
+.network-area svg{position:absolute;inset:0;width:100%;height:100%;}
+.node{position:absolute;width:56px;height:56px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:20px;border:2.5px solid var(--border);background:var(--panel);transform:translate(-50%,-50%);z-index:2;transition:border-color .25s,box-shadow .25s;box-shadow:var(--shadow-sm);}
+.node .node-label{font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--muted);position:absolute;bottom:-18px;white-space:nowrap;}
+.node.source{border-color:var(--green);box-shadow:0 0 0 4px var(--green-dim);}
+.node.dest{border-color:var(--red);box-shadow:0 0 0 4px var(--red-dim);}
+.packet{position:absolute;width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;z-index:10;transform:translate(-50%,-50%);pointer-events:none;transition:left .55s ease,top .55s ease;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+/* SIM 2 */
+.ip-builder{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.field-group{margin-bottom:13px;}
+.field-label{font-size:0.78rem;font-weight:700;color:var(--text);margin-bottom:5px;display:flex;align-items:center;gap:8px;}
+.field-badge{font-size:0.63rem;padding:2px 8px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-weight:700;}
+.fb-blue{background:var(--blue-dim);color:var(--blue);} .fb-green{background:var(--green-dim);color:var(--green);} .fb-amber{background:var(--amber-dim);color:var(--amber);}
+input[type=text],input[type=number],select{width:100%;background:var(--panel2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.87rem;padding:9px 12px;outline:none;transition:border-color .18s;}
+input:focus,select:focus{border-color:var(--blue);background:var(--panel);}
+.datagram-visual{font-family:'JetBrains Mono',monospace;font-size:0.73rem;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;}
+.dv-row{display:flex;border-bottom:1px solid var(--border);} .dv-row:last-child{border-bottom:none;}
+.dv-cell{padding:9px 7px;border-right:1px solid var(--border);text-align:center;flex:1;font-size:0.69rem;line-height:1.35;transition:background .3s;} .dv-cell:last-child{border-right:none;}
+.dv-cell .dv-key{color:var(--muted);font-size:0.58rem;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px;}
+.dv-cell .dv-val{font-weight:700;color:var(--text);}
+.dvc-blue{background:#eff6ff;} .dvc-green{background:#f0fdf4;} .dvc-amber{background:#fffbeb;} .dvc-red{background:#fef2f2;} .dvc-purple{background:#faf5ff;}
+.dvc-full{flex:4;} .dvc-2{flex:2;} .dvc-3{flex:3;}
+.highlight-cell{animation:cellPulse .7s ease;}
+@keyframes cellPulse{0%{background:#bfdbfe;}100%{background:inherit;}}
+.frag-container{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.frag-packet{background:var(--amber-dim);border:1.5px solid var(--amber-mid);border-radius:10px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:0.72rem;animation:fragIn .4s ease both;color:var(--text);}
+.frag-packet .frag-title{color:var(--amber);font-weight:700;margin-bottom:4px;}
+@keyframes fragIn{from{opacity:0;transform:scale(.85) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
+/* SIM 3 */
+.routing-layout{display:grid;grid-template-columns:1fr 340px;gap:20px;}
+.routing-canvas{background:var(--panel2);border:1.5px solid var(--border);border-radius:14px;position:relative;height:400px;overflow:hidden;box-shadow:var(--shadow);}
+.routing-canvas svg{position:absolute;inset:0;width:100%;height:100%;}
+.r-node{position:absolute;width:52px;height:52px;border-radius:50%;background:var(--panel);border:2.5px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:15px;transform:translate(-50%,-50%);z-index:2;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .2s;box-shadow:var(--shadow-sm);}
+.r-node:hover{transform:translate(-50%,-50%) scale(1.1);}
+.r-node .r-label{font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--muted);position:absolute;bottom:-19px;white-space:nowrap;}
+.r-node.r-start{border-color:var(--green);box-shadow:0 0 0 5px var(--green-dim);}
+.r-node.r-end{border-color:var(--red);box-shadow:0 0 0 5px var(--red-dim);}
+.r-node.r-path{border-color:var(--amber);box-shadow:0 0 0 5px var(--amber-dim);}
+.route-table{width:100%;border-collapse:collapse;font-size:0.78rem;}
+.route-table th{text-align:left;padding:8px 10px;font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);border-bottom:1.5px solid var(--border);font-weight:700;}
+.route-table td{padding:8px 10px;border-bottom:1px solid var(--panel2);font-family:'JetBrains Mono',monospace;font-size:0.74rem;color:var(--text);}
+.route-table tr.best-route td{color:var(--green);font-weight:700;} .route-table tr.best-route{background:var(--green-dim);}
+.algo-steps{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.algo-step{display:flex;align-items:flex-start;gap:11px;padding:10px 12px;background:var(--panel2);border:1.5px solid var(--border);border-radius:10px;font-size:0.8rem;opacity:.45;transition:all .3s;color:var(--text);}
+.algo-step.done{opacity:1;border-color:var(--green);background:var(--green-dim);}
+.algo-step.current{opacity:1;border-color:var(--amber);background:var(--amber-dim);animation:stepPulse 1s ease infinite;}
+.algo-step-num{width:22px;height:22px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;font-family:'JetBrains Mono',monospace;color:var(--muted);}
+.algo-step.done .algo-step-num{background:var(--green);color:#fff;}
+.algo-step.current .algo-step-num{background:var(--amber);color:#fff;}
+@keyframes stepPulse{0%,100%{box-shadow:0 0 0 rgba(180,83,9,0);}50%{box-shadow:0 0 10px rgba(180,83,9,.2);}}
+/* SIM 4 */
+.tcp-sim{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.tcp-party{background:var(--panel2);border:1.5px solid var(--border);border-radius:14px;padding:20px;text-align:center;}
+.tcp-party h3{font-size:0.92rem;font-weight:800;color:var(--text);margin-bottom:4px;}
+.tcp-party .party-ip{font-family:'JetBrains Mono',monospace;font-size:0.71rem;color:var(--muted);margin-bottom:14px;}
+.tcp-state{display:inline-block;padding:5px 15px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:0.73rem;font-weight:700;margin-bottom:12px;transition:all .3s;border:1.5px solid transparent;}
+.state-closed{background:var(--red-dim);color:var(--red);border-color:var(--red-mid);}
+.state-listen{background:var(--amber-dim);color:var(--amber);border-color:var(--amber-mid);}
+.state-synsent{background:var(--blue-dim);color:var(--blue);border-color:var(--blue-mid);}
+.state-synrcvd{background:var(--purple-dim);color:var(--purple);border-color:var(--purple-mid);}
+.state-established{background:var(--green-dim);color:var(--green);border-color:var(--green-mid);}
+.state-finwait{background:var(--amber-dim);color:var(--amber);border-color:var(--amber-mid);}
+.state-timewait{background:var(--red-dim);color:var(--red);border-color:var(--red-mid);}
+.tcp-middle{grid-column:1/-1;display:flex;flex-direction:column;gap:7px;background:var(--panel2);border:1.5px solid var(--border);border-radius:14px;padding:16px;min-height:240px;}
+.tcp-middle-title{font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;}
+.tcp-message{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:9px;font-family:'JetBrains Mono',monospace;font-size:0.74rem;animation:msgIn .35s ease both;background:var(--panel);border:1.5px solid var(--border);color:var(--text);}
+.msg-flag{padding:3px 10px;border-radius:20px;font-weight:700;font-size:0.69rem;border:1.5px solid transparent;}
+.msg-dir{color:var(--blue);font-size:1rem;font-weight:700;}
+.flag-syn{background:var(--blue-dim);color:var(--blue);border-color:var(--blue-mid);}
+.flag-synack{background:var(--purple-dim);color:var(--purple);border-color:var(--purple-mid);}
+.flag-ack{background:var(--green-dim);color:var(--green);border-color:var(--green-mid);}
+.flag-data{background:var(--amber-dim);color:var(--amber);border-color:var(--amber-mid);}
+.flag-fin{background:var(--red-dim);color:var(--red);border-color:var(--red-mid);}
+@keyframes msgIn{from{opacity:0;transform:translateX(-10px);}to{opacity:1;transform:translateX(0);}}
+.tcp-buffer{background:var(--panel);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text);min-height:52px;margin-top:8px;line-height:1.8;}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700;border:1.5px solid transparent;}
+.badge-blue{background:var(--blue-dim);color:var(--blue);border-color:var(--blue-mid);}
+.badge-green{background:var(--green-dim);color:var(--green);border-color:var(--green-mid);}
+.badge-amber{background:var(--amber-dim);color:var(--amber);border-color:var(--amber-mid);}
+.badge-purple{background:var(--purple-dim);color:var(--purple);border-color:var(--purple-mid);}
+.badge-red{background:var(--red-dim);color:var(--red);border-color:var(--red-mid);}
+.progress-wrap{background:var(--border);border-radius:20px;height:7px;overflow:hidden;margin:8px 0;}
+.progress-bar{height:100%;border-radius:20px;transition:width .5s ease;}
+::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+@media(max-width:700px){.ip-builder,.routing-layout,.tcp-sim{grid-template-columns:1fr;}.header{flex-direction:column;align-items:flex-start;}.tab-bar{overflow-x:auto;}}
+</style>
+
+<script>(window.BOOMR_mq=window.BOOMR_mq||[]).push(["addVar",{"rua.upush":"false","rua.cpush":"false","rua.upre":"false","rua.cpre":"false","rua.uprl":"false","rua.cprl":"false","rua.cprf":"false","rua.trans":"","rua.cook":"false","rua.ims":"false","rua.ufprl":"false","rua.cfprl":"false","rua.isuxp":"false","rua.texp":"norulematch","rua.ceh":"false","rua.ueh":"false","rua.ieh.st":"0"}]);</script>
+                              <script>!function(e){var n="https://s.go-mpulse.net/boomerang/";if("False"=="True")e.BOOMR_config=e.BOOMR_config||{},e.BOOMR_config.PageParams=e.BOOMR_config.PageParams||{},e.BOOMR_config.PageParams.pci=!0,n="https://s2.go-mpulse.net/boomerang/";if(window.BOOMR_API_key="49VLA-CFTHA-CGTWE-8Y5XU-3FEH6",function(){function e(){if(!r){var e=document.createElement("script");e.id="boomr-scr-as",e.src=window.BOOMR.url,e.async=!0,o.appendChild(e),r=!0}}function t(e){r=!0;var n,t,a,i,d=document,O=window;if(window.BOOMR.snippetMethod=e?"if":"i",t=function(e,n){var t=d.createElement("script");t.id=n||"boomr-if-as",t.src=window.BOOMR.url,BOOMR_lstart=(new Date).getTime(),e=e||d.body,e.appendChild(t)},!window.addEventListener&&window.attachEvent&&navigator.userAgent.match(/MSIE [67]\./))return window.BOOMR.snippetMethod="s",void t(o,"boomr-async");a=document.createElement("IFRAME"),a.src="about:blank",a.title="",a.role="presentation",a.loading="eager",i=(a.frameElement||a).style,i.width=0,i.height=0,i.border=0,i.display="none",o.appendChild(a);try{O=a.contentWindow,d=O.document.open()}catch(_){n=document.domain,a.src="javascript:var d=document.open();d.domain='"+n+"';void 0;",O=a.contentWindow,d=O.document.open()}if(n)d._boomrl=function(){this.domain=n,t()},d.write("<bo"+"dy onload='document._boomrl();'>");else if(O._boomrl=function(){t()},O.addEventListener)O.addEventListener("load",O._boomrl,!1);else if(O.attachEvent)O.attachEvent("onload",O._boomrl);d.close()}function a(e){window.BOOMR_onload=e&&e.timeStamp||(new Date).getTime()}if(!window.BOOMR||!window.BOOMR.version&&!window.BOOMR.snippetExecuted){window.BOOMR=window.BOOMR||{},window.BOOMR.snippetStart=(new Date).getTime(),window.BOOMR.snippetExecuted=!0,window.BOOMR.snippetVersion=14,window.BOOMR.url=n+"49VLA-CFTHA-CGTWE-8Y5XU-3FEH6";var i=document.currentScript||document.getElementsByTagName("script")[0],o=i.parentNode,r=!1,d=document.createElement("link");if(d.relList&&"function"==typeof d.relList.supports&&d.relList.supports("preload")&&"as"in d)window.BOOMR.snippetMethod="p",d.href=window.BOOMR.url,d.rel="preload",d.as="script",d.addEventListener("load",e),d.addEventListener("error",function(){t(!0)}),setTimeout(function(){if(!r)t(!0)},3e3),BOOMR_lstart=(new Date).getTime(),o.appendChild(d);else t(!1);if(window.addEventListener)window.addEventListener("load",a,!1);else if(window.attachEvent)window.attachEvent("onload",a)}}(),"".length>0)if(e&&"performance"in e&&e.performance&&"function"==typeof e.performance.setResourceTimingBufferSize)e.performance.setResourceTimingBufferSize();!function(){if(BOOMR=e.BOOMR||{},BOOMR.plugins=BOOMR.plugins||{},!BOOMR.plugins.AK){var n=""=="true"?1:0,t="cookiepresent",a="fadafianakaqojqacqogqaaabvu4bevk-f-7f73a6fdb-clienttons-s.akamaihd.net",i="false"=="true"?2:1,o={"ak.v":"39","ak.cp":"1726165","ak.ai":parseInt("1113999",10),"ak.ol":"0","ak.cr":15,"ak.ipv":6,"ak.proto":"h3","ak.rid":"14acfe24","ak.r":44840,"ak.a2":n,"ak.m":"dsca","ak.n":"essl","ak.bpcip":"2806:2a0:d02:8107::","ak.cport":58319,"ak.gh":"23.59.181.75","ak.quicv":"0x00000001","ak.tlsv":"tls1.3","ak.0rtt":"","ak.0rtt.ed":"","ak.csrc":"-","ak.acc":"","ak.t":"1774228138","ak.ak":"hOBiQwZUYzCg5VSAfCLimQ==/DTJxc4GWe1B1RBkUu1oVvh9IoIImLuKfvLBYKLQS+U3Lb99pP4JTbFF6c1TDovBdXwwWWGcX7HIbqH6cKk1IzgSTZlSeilrsmHoFtmI4S37gHCzReYwTr2J3L6UohORPmUxVYz+s3Ts0MsHv9P5xMv/k1J9f2W4JPFmzQTwDCEEUKNTWU848fS12EAnbPYLgyyso7xm67/ol//MfVSwm8dSJi/XC6lbC5RGp4HESC50UqLV77aIBXAwGPw1Hu+GmUucgNur/gssPIomJ5ZxgSojPOX7vm2d55vOVmYVzdJL0yGqdqCjkoLr4pOHgCLZzseTdp3VDFp3+6fmO+d6kVp3j15RTW5e5B2AwtW5tJZsFf8jJ9fGhoMATDEtAKh5DEhvQJ93nS2vp+hTQCXPk6lzvnfs36kolH6StMhkiCc=","ak.pv":"51","ak.dpoabenc":"","ak.tf":i};if(""!==t)o["ak.ruds"]=t;var r={i:!1,av:function(n){var t="http.initiator";if(n&&(!n[t]||"spa_hard"===n[t]))o["ak.feo"]=void 0!==e.aFeoApplied?1:0,BOOMR.addVar(o)},rv:function(){var e=["ak.bpcip","ak.cport","ak.cr","ak.csrc","ak.gh","ak.ipv","ak.m","ak.n","ak.ol","ak.proto","ak.quicv","ak.tlsv","ak.0rtt","ak.0rtt.ed","ak.r","ak.acc","ak.t","ak.tf"];BOOMR.removeVar(e)}};BOOMR.plugins.AK={akVars:o,akDNSPreFetchDomain:a,init:function(){if(!r.i){var e=BOOMR.subscribe;e("before_beacon",r.av,null,null),e("onbeacon",r.rv,null,null),r.i=!0}return this},is_complete:function(){return!0}}}}()}(window);</script></head>
+<body>
+<div class="app">
+<div class="header">
+  <div class="header-brand">
+    <div class="brand-icon">🌐</div>
+    <div>
+      <div class="brand-title">Simulador · La Capa de Red</div>
+      <div class="brand-sub">Tema 5 — Redes de Ordenadores · UNIR</div>
+    </div>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('conmutacion')">🔀 Conmutación</button>
+    <button class="tab-btn" onclick="switchTab('ip')">📦 Protocolo IP</button>
+    <button class="tab-btn" onclick="switchTab('routing')">🗺️ Encaminamiento</button>
+    <button class="tab-btn" onclick="switchTab('tcp')">🤝 TCP</button>
+  </div>
+</div>
+<div class="main">
+
+<!-- TAB 1: CONMUTACIÓN -->
+<div id="tab-conmutacion" class="sim-section active">
+  <div class="section-header">
+    <h2>Simulador de Conmutación</h2>
+    <p>Observa cómo viajan los datos según el modo de conmutación elegido. Selecciona un modo y presiona <strong>Enviar datos</strong> para ver la simulación en tiempo real.</p>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Modo de Conmutación</div>
+    <div class="switch-controls">
+      <button class="mode-btn active-blue" onclick="setMode('circuitos',this)">⚡ Circuitos</button>
+      <button class="mode-btn" onclick="setMode('datagramas',this)">📨 Datagramas</button>
+      <button class="mode-btn" onclick="setMode('virtuales',this)">🔗 Circuitos Virtuales</button>
+    </div>
+    <div id="mode-info" class="info-box info-blue">
+      <strong>Conmutación de Circuitos:</strong> Se establece una conexión dedicada antes de transmitir. Todos los datos siguen la misma ruta y los recursos quedan reservados en exclusiva durante toda la sesión.
+    </div>
+    <div class="network-area" id="net-canvas"><svg id="net-svg"></svg></div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val" id="stat-hops" style="color:var(--blue)">—</div><div class="stat-lbl">Saltos totales</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-pkts" style="color:var(--green)">—</div><div class="stat-lbl">Paquetes enviados</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-delay" style="color:var(--amber)">—</div><div class="stat-lbl">Retardo (ms)</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-loss" style="color:var(--red)">—</div><div class="stat-lbl">Pérdidas</div></div>
+    </div>
+    <div class="panel-title">Registro de eventos</div>
+    <div class="log-area" id="sw-log"></div>
+    <div class="btn-row">
+      <button class="btn btn-blue" onclick="runSwitching()">▶ Enviar datos</button>
+      <button class="btn btn-ghost" onclick="resetSwitching()">↺ Reiniciar</button>
+      <span id="sw-status" style="font-size:.8rem;color:var(--muted);font-weight:600;"></span>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: PROTOCOLO IP -->
+<div id="tab-ip" class="sim-section">
+  <div class="section-header">
+    <h2>Constructor de Datagrama IP</h2>
+    <p>Rellena los campos del datagrama IPv4 y observa cómo se construye el paquete. Experimenta con tamaño y MTU para ver la fragmentación en acción.</p>
+  </div>
+  <div class="ip-builder">
+    <div>
+      <div class="panel">
+        <div class="panel-title">Campos del Datagrama IPv4</div>
+        <div class="field-group"><div class="field-label">IP Origen <span class="field-badge fb-green">fuente</span></div><input type="text" id="ip-src" value="192.168.1.10"></div>
+        <div class="field-group"><div class="field-label">IP Destino <span class="field-badge fb-blue">destino</span></div><input type="text" id="ip-dst" value="10.0.0.55"></div>
+        <div class="field-group"><div class="field-label">Protocolo superior <span class="field-badge fb-amber">campo proto</span></div><select id="ip-proto"><option value="6">6 — TCP</option><option value="17">17 — UDP</option><option value="1">1 — ICMP</option></select></div>
+        <div class="field-group"><div class="field-label">TTL (Tiempo de vida)</div><input type="number" id="ip-ttl" value="64" min="1" max="255"></div>
+        <div class="field-group"><div class="field-label">Tamaño del mensaje (bytes)</div><input type="number" id="ip-size" value="1500" min="20" max="8000"></div>
+        <div class="field-group"><div class="field-label">MTU de la red destino (bytes)</div><input type="number" id="ip-mtu" value="576" min="68" max="1500"></div>
+        <div class="btn-row"><button class="btn btn-blue" onclick="buildDatagram()">⚙️ Construir datagrama</button><button class="btn btn-ghost" onclick="resetIP()">↺ Limpiar</button></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:14px;">
+        <div class="panel-title">Visualización del Datagrama IPv4</div>
+        <div class="datagram-visual">
+          <div class="dv-row">
+            <div class="dv-cell dvc-blue"><div class="dv-key">Versión</div><div class="dv-val" id="dv-ver">4</div></div>
+            <div class="dv-cell dvc-blue"><div class="dv-key">IHL</div><div class="dv-val" id="dv-ihl">5</div></div>
+            <div class="dv-cell dvc-amber dvc-2"><div class="dv-key">Tipo Servicio</div><div class="dv-val">0x00</div></div>
+            <div class="dv-cell dvc-green dvc-full"><div class="dv-key">Longitud Total</div><div class="dv-val" id="dv-len">—</div></div>
+          </div>
+          <div class="dv-row">
+            <div class="dv-cell dvc-purple dvc-3"><div class="dv-key">Identificación</div><div class="dv-val" id="dv-id">—</div></div>
+            <div class="dv-cell dvc-red"><div class="dv-key">Flags</div><div class="dv-val" id="dv-flags">—</div></div>
+            <div class="dv-cell dvc-amber dvc-3"><div class="dv-key">Desplazamiento</div><div class="dv-val" id="dv-offset">0</div></div>
+          </div>
+          <div class="dv-row">
+            <div class="dv-cell dvc-red dvc-2"><div class="dv-key">TTL</div><div class="dv-val" id="dv-ttl">—</div></div>
+            <div class="dv-cell dvc-blue dvc-2"><div class="dv-key">Protocolo</div><div class="dv-val" id="dv-proto">—</div></div>
+            <div class="dv-cell dvc-green dvc-full"><div class="dv-key">Checksum</div><div class="dv-val" id="dv-cksum">—</div></div>
+          </div>
+          <div class="dv-row"><div class="dv-cell dvc-green" style="flex:1;padding:10px;"><div class="dv-key">Dirección Origen</div><div class="dv-val" id="dv-src">—</div></div></div>
+          <div class="dv-row"><div class="dv-cell dvc-blue" style="flex:1;padding:10px;"><div class="dv-key">Dirección Destino</div><div class="dv-val" id="dv-dst">—</div></div></div>
+          <div class="dv-row"><div class="dv-cell" style="flex:1;padding:10px;color:var(--muted);font-size:.69rem;text-align:center;background:#fafbfc;">[ DATOS / PAYLOAD ]</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Fragmentación IP</div>
+        <div id="frag-info" class="info-box info-amber" style="display:none;"></div>
+        <div class="frag-container" id="frag-container"></div>
+        <div id="frag-none" style="color:var(--muted);font-size:.82rem;font-family:'JetBrains Mono',monospace;">Construye un datagrama para ver si se necesita fragmentación.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: ENCAMINAMIENTO -->
+<div id="tab-routing" class="sim-section">
+  <div class="section-header">
+    <h2>Simulador de Encaminamiento</h2>
+    <p>Selecciona el algoritmo, elige nodo origen y destino, y observa cómo se calcula la ruta óptima. La red tiene 7 routers con distintos pesos de enlace.</p>
+  </div>
+  <div class="panel" style="margin-bottom:16px;">
+    <div class="panel-title">Configuración del Algoritmo</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
+      <div><div class="field-label" style="margin-bottom:5px;">Algoritmo</div><select id="algo-select" style="width:215px;"><option value="centralizado">Centralizado (Dijkstra)</option><option value="aislado">Aislado (Flooding)</option><option value="distribuido">Distribuido (Bellman-Ford)</option></select></div>
+      <div><div class="field-label" style="margin-bottom:5px;">Nodo Origen</div><select id="algo-src" style="width:140px;"><option value="0">R1 (Origen)</option><option value="1">R2</option><option value="2">R3</option><option value="3">R4</option><option value="4">R5</option><option value="5">R6</option><option value="6">R7</option></select></div>
+      <div><div class="field-label" style="margin-bottom:5px;">Nodo Destino</div><select id="algo-dst" style="width:140px;"><option value="0">R1</option><option value="1">R2</option><option value="2">R3</option><option value="3">R4</option><option value="4">R5</option><option value="5">R6</option><option value="6" selected>R7 (Destino)</option></select></div>
+      <div><button class="btn btn-blue" onclick="runRouting()">▶ Calcular ruta</button><button class="btn btn-ghost" style="margin-left:8px;" onclick="resetRouting()">↺ Reiniciar</button></div>
+    </div>
+  </div>
+  <div class="routing-layout">
+    <div>
+      <div class="routing-canvas" id="routing-canvas"><svg id="routing-svg"></svg></div>
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-title">Tabla de Encaminamiento</div>
+        <table class="route-table">
+          <thead><tr><th>Destino</th><th>Siguiente salto</th><th>Coste</th><th>Estado</th></tr></thead>
+          <tbody id="route-table-body"><tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px;">Ejecuta el algoritmo para ver la tabla</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-title">Algoritmo en ejecución</div>
+        <div id="algo-info" class="info-box info-blue" style="margin-bottom:12px;">Selecciona un algoritmo y ejecuta para ver el proceso paso a paso.</div>
+        <div class="algo-steps" id="algo-steps"></div>
+        <div class="log-area" id="route-log" style="margin-top:14px;height:170px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: TCP -->
+<div id="tab-tcp" class="sim-section">
+  <div class="section-header">
+    <h2>Simulador TCP – Ciclo de Vida de la Conexión</h2>
+    <p>Simula el establecimiento (<em>3-way handshake</em>), la transferencia de datos con ACKs y la liberación de la conexión TCP entre cliente y servidor.</p>
+  </div>
+  <div class="panel" style="margin-bottom:16px;">
+    <div class="panel-title">Configuración</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="field-group" style="margin:0;"><div class="field-label">Mensaje a enviar</div><input type="text" id="tcp-msg" value="Hola, servidor!" style="width:230px;" maxlength="40"></div>
+      <div class="field-group" style="margin:0;"><div class="field-label">Tamaño de segmento (bytes)</div><input type="number" id="tcp-seg" value="5" min="1" max="20" style="width:130px;"></div>
+      <button class="btn btn-green" onclick="runTCP()" id="tcp-run-btn">▶ Iniciar conexión</button>
+      <button class="btn btn-ghost" onclick="resetTCP()">↺ Reiniciar</button>
+    </div>
+  </div>
+  <div class="tcp-sim">
+    <div class="tcp-party">
+      <h3>🖥️ Cliente</h3><div class="party-ip">192.168.1.100:54321</div>
+      <div class="tcp-state state-closed" id="cli-state">CLOSED</div>
+      <div style="font-size:.77rem;color:var(--muted);margin-bottom:6px;font-weight:600;">ISN generado:</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.88rem;font-weight:700;color:var(--text);" id="cli-isn">—</div>
+      <div class="progress-wrap" style="margin-top:14px;"><div class="progress-bar" id="cli-progress" style="width:0%;background:var(--blue);"></div></div>
+      <div style="font-size:.71rem;color:var(--muted);margin-top:4px;font-weight:600;" id="cli-prog-lbl">—</div>
+    </div>
+    <div class="tcp-party">
+      <h3>🖧 Servidor</h3><div class="party-ip">10.0.0.1:80</div>
+      <div class="tcp-state state-listen" id="srv-state">LISTEN</div>
+      <div style="font-size:.77rem;color:var(--muted);margin-bottom:6px;font-weight:600;">ISN generado:</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.88rem;font-weight:700;color:var(--text);" id="srv-isn">—</div>
+      <div class="progress-wrap" style="margin-top:14px;"><div class="progress-bar" id="srv-progress" style="width:0%;background:var(--green);"></div></div>
+      <div style="font-size:.71rem;color:var(--muted);margin-top:4px;font-weight:600;" id="srv-prog-lbl">—</div>
+    </div>
+    <div class="tcp-middle">
+      <div class="tcp-middle-title">📡 Canal de comunicación (intercambio de segmentos)</div>
+      <div id="tcp-messages" style="display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:260px;"></div>
+    </div>
+    <div class="panel" style="grid-column:1/-1;">
+      <div class="panel-title">Buffer del servidor recibido</div>
+      <div class="tcp-buffer" id="tcp-buffer">Esperando datos...</div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;" id="tcp-ack-row"></div>
+    </div>
+  </div>
+</div>
+
+</div></div>
+<script>
+function switchTab(id){document.querySelectorAll('.sim-section').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');event.target.classList.add('active');if(id==='conmutacion')initNetwork();if(id==='routing')initRoutingCanvas();}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function randHex(b){return Array.from({length:b},()=>Math.floor(Math.random()*256).toString(16).padStart(2,'0')).join('').toUpperCase();}
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+// TAB 1
+let swMode='circuitos',swRunning=false;
+const nodes=[{id:'A',label:'PC Origen',icon:'💻',x:10,y:50},{id:'R1',label:'Router 1',icon:'📡',x:28,y:25},{id:'R2',label:'Router 2',icon:'📡',x:50,y:15},{id:'R3',label:'Router 3',icon:'📡',x:72,y:25},{id:'R4',label:'Router 4',icon:'📡',x:28,y:75},{id:'R5',label:'Router 5',icon:'📡',x:50,y:55},{id:'R6',label:'Router 6',icon:'📡',x:72,y:75},{id:'B',label:'PC Destino',icon:'🖥️',x:90,y:50}];
+const edges=[['A','R1'],['A','R4'],['R1','R2'],['R1','R5'],['R2','R3'],['R2','R5'],['R3','R6'],['R3','B'],['R4','R5'],['R4','R6'],['R5','R6'],['R5','R3'],['R6','B']];
+function initNetwork(){const area=document.getElementById('net-canvas'),svg=document.getElementById('net-svg');area.querySelectorAll('.node,.packet').forEach(n=>n.remove());svg.innerHTML='';edges.forEach(([a,b])=>{const na=nodes.find(n=>n.id===a),nb=nodes.find(n=>n.id===b);const line=document.createElementNS('http://www.w3.org/2000/svg','line');line.setAttribute('x1',na.x+'%');line.setAttribute('y1',na.y+'%');line.setAttribute('x2',nb.x+'%');line.setAttribute('y2',nb.y+'%');line.setAttribute('stroke','#c8d5e8');line.setAttribute('stroke-width','2');line.id='edge-'+a+'-'+b;svg.appendChild(line);});nodes.forEach(n=>{const el=document.createElement('div');el.className='node'+(n.id==='A'?' source':'')+(n.id==='B'?' dest':'');el.id='node-'+n.id;el.style.left=n.x+'%';el.style.top=n.y+'%';el.innerHTML=n.icon+'<div class="node-label">'+n.id+'</div>';area.appendChild(el);});}
+const modeInfo={circuitos:{cls:'info-blue',text:'<strong>Conmutación de Circuitos:</strong> Se establece una conexión dedicada entre origen y destino antes de transmitir. Todos los datos siguen el mismo camino y los recursos quedan reservados en exclusiva durante toda la sesión.'},datagramas:{cls:'info-green',text:'<strong>Conmutación de Paquetes (Datagramas):</strong> Sin conexión previa. Cada paquete lleva la dirección destino y puede tomar rutas distintas. Los routers deciden en cada salto individualmente.'},virtuales:{cls:'info-purple',text:'<strong>Circuitos Virtuales:</strong> Se negocia una ruta antes de enviar. Todos los paquetes siguen el mismo camino acordado, pero el ancho de banda no está reservado exclusivamente.'}};
+function setMode(mode,btn){swMode=mode;document.querySelectorAll('.mode-btn').forEach(b=>b.className='mode-btn');btn.className='mode-btn active-'+(mode==='circuitos'?'blue':mode==='datagramas'?'green':'purple');const info=document.getElementById('mode-info');info.className='info-box '+modeInfo[mode].cls;info.innerHTML=modeInfo[mode].text;resetSwitching(false);}
+function swLog(msg,cls='log-blue'){const log=document.getElementById('sw-log');const t=new Date().toLocaleTimeString('es',{hour12:false});log.innerHTML+=`<div class="log-entry"><span class="log-time">[${t}]</span><span class="${cls}">${msg}</span></div>`;log.scrollTop=log.scrollHeight;}
+function highlightEdge(a,b,color){const el=document.getElementById('edge-'+a+'-'+b)||document.getElementById('edge-'+b+'-'+a);if(el){el.setAttribute('stroke',color);el.setAttribute('stroke-width','3.5');}}
+function resetEdges(){document.querySelectorAll('#net-svg line').forEach(l=>{l.setAttribute('stroke','#c8d5e8');l.setAttribute('stroke-width','2');});}
+function highlightNode(id,color){const el=document.getElementById('node-'+id);if(el){el.style.borderColor=color;el.style.boxShadow=`0 0 0 5px ${color}30`;}}
+function resetNodes(){nodes.forEach(n=>{const el=document.getElementById('node-'+n.id);if(!el)return;el.style.borderColor='';el.style.boxShadow='';el.className='node'+(n.id==='A'?' source':'')+(n.id==='B'?' dest':'');});}
+async function animatePacket(fromId,toId,color,bg,label){const area=document.getElementById('net-canvas'),fn=nodes.find(n=>n.id===fromId),tn=nodes.find(n=>n.id===toId);const pkt=document.createElement('div');pkt.className='packet';pkt.style.left=fn.x+'%';pkt.style.top=fn.y+'%';pkt.style.background=bg;pkt.style.border='2px solid '+color;pkt.style.color=color;pkt.textContent=label;area.appendChild(pkt);await sleep(50);pkt.style.left=tn.x+'%';pkt.style.top=tn.y+'%';await sleep(620);pkt.remove();}
+const circuitPath=['A','R1','R2','R3','B'];
+const paths_datagrams=[['A','R1','R2','R3','B'],['A','R4','R5','R3','B'],['A','R1','R5','R6','B'],['A','R4','R6','B']];
+async function runSwitching(){if(swRunning)return;swRunning=true;resetEdges();resetNodes();document.getElementById('sw-log').innerHTML='';document.getElementById('sw-status').textContent='⏳ Simulando...';if(swMode==='circuitos')await simCircuitos();else if(swMode==='datagramas')await simDatagramas();else await simVirtuales();swRunning=false;document.getElementById('sw-status').textContent='✅ Completado';}
+async function simCircuitos(){const path=circuitPath;swLog('=== CONMUTACIÓN DE CIRCUITOS ===','log-blue');swLog('Fase 1: ESTABLECIMIENTO DE CONEXIÓN','log-blue');for(let i=0;i<path.length-1;i++){const a=path[i],b=path[i+1];highlightEdge(a,b,'#2563eb');highlightNode(a,'#2563eb');swLog(`  ↳ Reservando enlace ${a} → ${b}`,'log-blue');await sleep(480);}highlightNode('B','#2563eb');swLog('  ✓ Circuito establecido: A→R1→R2→R3→B','log-green');await sleep(600);swLog('Fase 2: TRANSFERENCIA DE DATOS','log-green');const packets=4;for(let p=1;p<=packets;p++){swLog(`  Paquete #${p} (misma ruta garantizada)`,'log-green');for(let i=0;i<path.length-1;i++)await animatePacket(path[i],path[i+1],'#16a34a','#dcfce7','P'+p);await sleep(180);}swLog('Fase 3: LIBERACIÓN DE CONEXIÓN','log-amber');resetEdges();for(let i=path.length-1;i>0;i--){highlightEdge(path[i-1],path[i],'#b45309');swLog(`  ↳ Liberando enlace ${path[i]} → ${path[i-1]}`,'log-amber');await sleep(280);}resetEdges();resetNodes();swLog('✓ Conexión cerrada. Recursos liberados.','log-green');document.getElementById('stat-hops').textContent=(path.length-1)*packets;document.getElementById('stat-pkts').textContent=packets;document.getElementById('stat-delay').textContent='120';document.getElementById('stat-loss').textContent='0%';}
+async function simDatagramas(){swLog('=== CONMUTACIÓN DE PAQUETES (DATAGRAMAS) ===','log-green');swLog('Sin conexión previa. Cada paquete decide su ruta.','log-green');let totalHops=0;for(let p=1;p<=4;p++){const path=paths_datagrams[(p-1)%paths_datagrams.length];swLog(`Paquete #${p}: ruta ${path.join('→')}`,'log-green');for(let i=0;i<path.length-1;i++){highlightEdge(path[i],path[i+1],'#16a34a');await animatePacket(path[i],path[i+1],'#16a34a','#dcfce7','P'+p);totalHops++;}resetEdges();await sleep(280);}swLog('✓ Todos los paquetes llegaron (posiblemente desordenados).','log-green');document.getElementById('stat-hops').textContent=totalHops;document.getElementById('stat-pkts').textContent=4;document.getElementById('stat-delay').textContent=rand(80,150);document.getElementById('stat-loss').textContent='0%';}
+async function simVirtuales(){swLog('=== CIRCUITOS VIRTUALES ===','log-purple');swLog('Fase 1: Negociación del circuito virtual...','log-purple');const path=['A','R4','R5','R3','B'];for(let i=0;i<path.length-1;i++){highlightEdge(path[i],path[i+1],'#7c3aed');swLog(`  VC-ID asignado en enlace ${path[i]}→${path[i+1]}`,'log-purple');await sleep(380);}swLog('  ✓ Circuito virtual VC-42 activo','log-green');await sleep(480);swLog('Fase 2: Transferencia usando VC-42','log-purple');for(let p=1;p<=4;p++){swLog(`  Paquete #${p} etiquetado [VC-42]`,'log-purple');for(let i=0;i<path.length-1;i++)await animatePacket(path[i],path[i+1],'#7c3aed','#ede9fe','VC'+p);await sleep(180);}swLog('Fase 3: Liberación del circuito virtual','log-amber');resetEdges();resetNodes();swLog('✓ VC-42 eliminado. Recursos compartidos liberados.','log-green');document.getElementById('stat-hops').textContent=(path.length-1)*4;document.getElementById('stat-pkts').textContent=4;document.getElementById('stat-delay').textContent=rand(60,100);document.getElementById('stat-loss').textContent='0%';}
+function resetSwitching(clearLog=true){swRunning=false;resetEdges();resetNodes();document.querySelectorAll('.packet').forEach(p=>p.remove());if(clearLog)document.getElementById('sw-log').innerHTML='';document.getElementById('sw-status').textContent='';['stat-hops','stat-pkts','stat-delay','stat-loss'].forEach(id=>document.getElementById(id).textContent='—');}
+window.addEventListener('load',()=>{initNetwork();});
+
+// TAB 2
+let ipId=0;
+function buildDatagram(){const src=document.getElementById('ip-src').value||'0.0.0.0';const dst=document.getElementById('ip-dst').value||'0.0.0.0';const proto=document.getElementById('ip-proto').value;const ttl=parseInt(document.getElementById('ip-ttl').value)||64;const size=parseInt(document.getElementById('ip-size').value)||1500;const mtu=parseInt(document.getElementById('ip-mtu').value)||576;ipId=rand(10000,65535);const protoNames={'6':'TCP (6)','17':'UDP (17)','1':'ICMP (1)'};const fields={'dv-ver':'4 (IPv4)','dv-ihl':'5 (20B)','dv-len':size+' B','dv-id':'0x'+ipId.toString(16).toUpperCase(),'dv-flags':size>mtu?'MF=1':'DF=0','dv-offset':'0','dv-ttl':ttl,'dv-proto':protoNames[proto],'dv-cksum':'0x'+randHex(2),'dv-src':src,'dv-dst':dst};for(const [id,val] of Object.entries(fields)){const el=document.getElementById(id);if(el){el.textContent=val;el.closest('.dv-cell').classList.add('highlight-cell');setTimeout(()=>el.closest('.dv-cell').classList.remove('highlight-cell'),800);}}const fragContainer=document.getElementById('frag-container'),fragInfo=document.getElementById('frag-info'),fragNone=document.getElementById('frag-none');fragContainer.innerHTML='';const hdr=20,dataPayload=size-hdr,maxData=mtu-hdr;if(size<=mtu){fragInfo.style.display='none';fragNone.style.display='block';fragNone.innerHTML=`<span class="badge badge-green">✓ Sin fragmentación</span>&nbsp; El datagrama (${size}B) cabe dentro del MTU (${mtu}B).`;}else{fragNone.style.display='none';fragInfo.style.display='block';const numFrags=Math.ceil(dataPayload/maxData);fragInfo.innerHTML=`⚠️ El datagrama de <strong>${size} bytes</strong> supera el MTU de <strong>${mtu} bytes</strong>. Se divide en <strong>${numFrags} fragmentos</strong>.`;let offset=0,remaining=dataPayload;for(let i=1;i<=numFrags;i++){const chunkData=Math.min(maxData,remaining);const isLast=(i===numFrags);const frag=document.createElement('div');frag.className='frag-packet';frag.style.animationDelay=((i-1)*110)+'ms';frag.innerHTML=`<div class="frag-title">Fragmento #${i}</div><div style="color:var(--muted);">ID: 0x${ipId.toString(16).toUpperCase()}</div><div>Offset: <span style="color:var(--blue);font-weight:700;">${offset}</span></div><div>Datos: <span style="color:var(--green);font-weight:700;">${chunkData}B</span></div><div>Total: ${chunkData+hdr}B</div><div>MF: <span style="color:${isLast?'var(--green)':'var(--red)'};font-weight:700;">${isLast?'0 (último)':'1'}</span></div>`;fragContainer.appendChild(frag);offset+=Math.floor(chunkData/8);remaining-=chunkData;}}}
+function resetIP(){['dv-ver','dv-ihl','dv-len','dv-id','dv-flags','dv-offset','dv-ttl','dv-proto','dv-cksum','dv-src','dv-dst'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=id==='dv-ver'?'4':id==='dv-ihl'?'5':id==='dv-offset'?'0':'—';});document.getElementById('frag-container').innerHTML='';document.getElementById('frag-info').style.display='none';document.getElementById('frag-none').style.display='block';document.getElementById('frag-none').innerHTML='Construye un datagrama para ver si se necesita fragmentación.';}
+
+// TAB 3
+const rNodes=[{id:0,label:'R1',x:10,y:50,icon:'🖥️'},{id:1,label:'R2',x:30,y:18,icon:'📡'},{id:2,label:'R3',x:55,y:35,icon:'📡'},{id:3,label:'R4',x:30,y:80,icon:'📡'},{id:4,label:'R5',x:70,y:15,icon:'📡'},{id:5,label:'R6',x:75,y:72,icon:'📡'},{id:6,label:'R7',x:92,y:45,icon:'🖥️'}];
+const rEdges=[[0,1,4],[0,3,2],[1,2,3],[1,4,6],[2,4,2],[2,5,3],[2,6,8],[3,2,5],[3,5,4],[4,6,3],[5,6,2],[1,3,7]];
+function initRoutingCanvas(){const canvas=document.getElementById('routing-canvas'),svg=document.getElementById('routing-svg');canvas.querySelectorAll('.r-node').forEach(n=>n.remove());svg.innerHTML='';rEdges.forEach(([a,b,cost])=>{const na=rNodes[a],nb=rNodes[b];const line=document.createElementNS('http://www.w3.org/2000/svg','line');line.setAttribute('x1',na.x+'%');line.setAttribute('y1',na.y+'%');line.setAttribute('x2',nb.x+'%');line.setAttribute('y2',nb.y+'%');line.setAttribute('stroke','#c8d5e8');line.setAttribute('stroke-width','2');line.id=`redge-${a}-${b}`;svg.appendChild(line);const mx=(na.x+nb.x)/2,my=(na.y+nb.y)/2;const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');bg.setAttribute('x',(mx-8)+'%');bg.setAttribute('y',(my-7)+'%');bg.setAttribute('width','16px');bg.setAttribute('height','14px');bg.setAttribute('rx','3');bg.setAttribute('fill','#ffffff');bg.setAttribute('opacity','0.9');svg.appendChild(bg);const text=document.createElementNS('http://www.w3.org/2000/svg','text');text.setAttribute('x',mx+'%');text.setAttribute('y',my+'%');text.setAttribute('text-anchor','middle');text.setAttribute('dominant-baseline','middle');text.setAttribute('font-size','11');text.setAttribute('fill','#6b7a93');text.setAttribute('font-family','JetBrains Mono');text.setAttribute('font-weight','700');text.textContent=cost;svg.appendChild(text);});rNodes.forEach(n=>{const el=document.createElement('div');el.className='r-node';el.id='rnode-'+n.id;el.style.left=n.x+'%';el.style.top=n.y+'%';el.innerHTML=n.icon+'<div class="r-label">'+n.label+'</div>';canvas.appendChild(el);});}
+function highlightREdge(a,b,color){const el=document.getElementById(`redge-${a}-${b}`)||document.getElementById(`redge-${b}-${a}`);if(el){el.setAttribute('stroke',color);el.setAttribute('stroke-width','4');}}
+function resetREdges(){document.querySelectorAll('#routing-svg line').forEach(l=>{l.setAttribute('stroke','#c8d5e8');l.setAttribute('stroke-width','2');});}
+function highlightRNode(id,cls){const el=document.getElementById('rnode-'+id);if(el)el.className='r-node '+cls;}
+function resetRNodes(){rNodes.forEach(n=>{const el=document.getElementById('rnode-'+n.id);if(el)el.className='r-node';});}
+function dijkstra(src,dst){const N=rNodes.length,dist=Array(N).fill(Infinity),prev=Array(N).fill(-1),vis=Array(N).fill(false);dist[src]=0;const adj=Array.from({length:N},()=>[]);rEdges.forEach(([a,b,c])=>{adj[a].push([b,c]);adj[b].push([a,c]);});for(let i=0;i<N;i++){let u=-1;for(let v=0;v<N;v++)if(!vis[v]&&(u===-1||dist[v]<dist[u]))u=v;if(dist[u]===Infinity)break;vis[u]=true;for(const [v,c] of adj[u])if(dist[u]+c<dist[v]){dist[v]=dist[u]+c;prev[v]=u;}}const path=[];let cur=dst;while(cur!==-1){path.unshift(cur);cur=prev[cur];}return{path,dist};}
+function bellmanFord(src,dst){const N=rNodes.length,dist=Array(N).fill(Infinity),prev=Array(N).fill(-1);dist[src]=0;for(let i=0;i<N-1;i++)rEdges.forEach(([a,b,c])=>{if(dist[a]+c<dist[b]){dist[b]=dist[a]+c;prev[b]=a;}if(dist[b]+c<dist[a]){dist[a]=dist[b]+c;prev[a]=b;}});const path=[];let cur=dst;while(cur!==-1){path.unshift(cur);cur=prev[cur];}return{path,dist};}
+function routeLog(msg,cls='log-blue'){const log=document.getElementById('route-log');log.innerHTML+=`<div class="log-entry"><span class="${cls}">${msg}</span></div>`;log.scrollTop=log.scrollHeight;}
+function addAlgoStep(text,state='pending'){const steps=document.getElementById('algo-steps');const num=steps.children.length+1;const el=document.createElement('div');el.className='algo-step '+(state==='current'?'current':state==='done'?'done':'');el.innerHTML=`<div class="algo-step-num">${num}</div><div>${text}</div>`;steps.appendChild(el);return el;}
+function setStepState(el,state){el.className='algo-step '+state;}
+async function runRouting(){const algo=document.getElementById('algo-select').value;const src=parseInt(document.getElementById('algo-src').value);const dst=parseInt(document.getElementById('algo-dst').value);if(src===dst){alert('Origen y destino deben ser diferentes.');return;}resetREdges();resetRNodes();document.getElementById('route-log').innerHTML='';document.getElementById('algo-steps').innerHTML='';document.getElementById('route-table-body').innerHTML='';highlightRNode(src,'r-start');highlightRNode(dst,'r-end');const infoEl=document.getElementById('algo-info');if(algo==='centralizado'){infoEl.className='info-box info-blue';infoEl.innerHTML='<strong>Centralizado (Dijkstra):</strong> Un nodo central conoce toda la topología y calcula la tabla de encaminamiento óptima para cada nodo de la red.';await runDijkstra(src,dst);}else if(algo==='aislado'){infoEl.className='info-box info-amber';infoEl.innerHTML='<strong>Aislado (Flooding):</strong> Cada nodo reenvía el paquete por TODOS sus enlaces. Garantiza entrega pero genera tráfico redundante muy elevado.';await runFlooding(src,dst);}else{infoEl.className='info-box info-purple';infoEl.innerHTML='<strong>Distribuido (Bellman-Ford):</strong> Cada nodo intercambia su vector de distancias con vecinos. Converge iterativamente sin necesitar un nodo central.';await runBellmanFord(src,dst);}}
+async function runDijkstra(src,dst){const s1=addAlgoStep('Inicializar dist[todos]=∞, dist[origen]=0','current');routeLog('=== Dijkstra (Centralizado) ===','log-blue');routeLog(`dist[R${src+1}] = 0`,'log-blue');await sleep(700);setStepState(s1,'done');const s2=addAlgoStep('Seleccionar nodo no visitado con menor distancia','current');await sleep(600);const{path,dist}=dijkstra(src,dst);setStepState(s2,'done');const s3=addAlgoStep('Relajar aristas: actualizar distancias a vecinos','current');rNodes.forEach(n=>routeLog(`  dist[${n.label}] = ${dist[n.id]===Infinity?'∞':dist[n.id]}`,'log-blue'));await sleep(800);setStepState(s3,'done');const s4=addAlgoStep('Reconstruir ruta óptima desde el destino','current');await sleep(500);for(let i=0;i<path.length;i++){highlightRNode(path[i],i===0?'r-start':i===path.length-1?'r-end':'r-path');if(i>0)highlightREdge(path[i-1],path[i],'#b45309');await sleep(480);}setStepState(s4,'done');addAlgoStep(`Ruta óptima: ${path.map(i=>'R'+(i+1)).join('→')} — Coste: ${dist[dst]}`,'done');routeLog(`✓ Ruta: ${path.map(i=>rNodes[i].label).join(' → ')}`,'log-green');routeLog(`  Coste total: ${dist[dst]}`,'log-green');const tbody=document.getElementById('route-table-body');tbody.innerHTML='';rNodes.forEach(n=>{if(n.id===src)return;const p2=dijkstra(src,n.id);const nextHop=p2.path.length>1?rNodes[p2.path[1]].label:'—';const isBest=(n.id===dst);tbody.innerHTML+=`<tr class="${isBest?'best-route':''}"><td>${n.label}${isBest?' 🎯':''}</td><td>${nextHop}</td><td>${p2.dist[n.id]===Infinity?'∞':p2.dist[n.id]}</td><td><span class="badge ${isBest?'badge-green':'badge-blue'}">${isBest?'MEJOR':'OK'}</span></td></tr>`;});}
+async function runFlooding(src,dst){const s1=addAlgoStep('Enviar paquete por TODOS los enlaces del nodo origen','current');routeLog('=== Flooding / Inundación (Aislado) ===','log-amber');await sleep(600);const adj=Array.from({length:rNodes.length},()=>[]);rEdges.forEach(([a,b])=>{adj[a].push(b);adj[b].push(a);});let reached=new Set([src]),wave=[src],hop=0;while(!reached.has(dst)&&wave.length>0){hop++;const nextWave=[];for(const n of wave)for(const nb of adj[n])if(!reached.has(nb)){highlightREdge(n,nb,'#b45309');highlightRNode(nb,'r-path');routeLog(`  Salto ${hop}: ${rNodes[n].label} → ${rNodes[nb].label}`,'log-amber');await sleep(280);reached.add(nb);nextWave.push(nb);}wave=nextWave;}setStepState(s1,'done');addAlgoStep(`Destino alcanzado tras ${hop} saltos (todas las rutas exploradas)`,'done');highlightRNode(dst,'r-end');routeLog(`✓ Destino R${dst+1} alcanzado.`,'log-amber');routeLog(`⚠ Nodos inundados: ${reached.size} — Ineficiente pero garantiza entrega.`,'log-amber');document.getElementById('route-table-body').innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--amber);padding:14px;font-weight:600;">Flooding no genera tabla: inunda toda la red (${reached.size} nodos alcanzados)</td></tr>`;}
+async function runBellmanFord(src,dst){routeLog('=== Bellman-Ford (Distribuido) ===','log-purple');const s1=addAlgoStep('Cada nodo inicializa su vector de distancias','current');await sleep(600);setStepState(s1,'done');const s2=addAlgoStep('Iteración 1: intercambio de vectores con vecinos','current');routeLog('Iteración 1: propagando distancias...','log-purple');await sleep(700);setStepState(s2,'done');const s3=addAlgoStep('Iteración 2: actualizar si hay ruta mejor','current');routeLog('Iteración 2: actualizando tablas...','log-purple');await sleep(700);setStepState(s3,'done');const s4=addAlgoStep('Convergencia: tablas estables en todos los nodos','current');await sleep(500);const{path,dist}=bellmanFord(src,dst);setStepState(s4,'done');for(let i=0;i<path.length;i++){highlightRNode(path[i],i===0?'r-start':i===path.length-1?'r-end':'r-path');if(i>0)highlightREdge(path[i-1],path[i],'#7c3aed');await sleep(440);}addAlgoStep(`Ruta convergida: ${path.map(i=>'R'+(i+1)).join('→')} — Coste: ${dist[dst]}`,'done');routeLog(`✓ Ruta: ${path.map(i=>rNodes[i].label).join(' → ')}`,'log-green');routeLog(`  Coste: ${dist[dst]}`,'log-green');const tbody=document.getElementById('route-table-body');tbody.innerHTML='';rNodes.forEach(n=>{if(n.id===src)return;const p2=bellmanFord(src,n.id);const nextHop=p2.path.length>1?rNodes[p2.path[1]].label:'—';const isBest=(n.id===dst);tbody.innerHTML+=`<tr class="${isBest?'best-route':''}"><td>${n.label}${isBest?' 🎯':''}</td><td>${nextHop}</td><td>${p2.dist[n.id]===Infinity?'∞':p2.dist[n.id]}</td><td><span class="badge ${isBest?'badge-green':'badge-purple'}">${isBest?'MEJOR':'OK'}</span></td></tr>`;});}
+function resetRouting(){resetREdges();resetRNodes();document.getElementById('route-log').innerHTML='';document.getElementById('algo-steps').innerHTML='';document.getElementById('route-table-body').innerHTML=`<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px;">Ejecuta el algoritmo para ver la tabla</td></tr>`;document.getElementById('algo-info').innerHTML='Selecciona un algoritmo y ejecuta para ver el proceso paso a paso.';}
+
+// TAB 4
+let tcpRunning=false;
+function setTCPState(party,state){const el=document.getElementById(party+'-state');const map={'CLOSED':'state-closed','LISTEN':'state-listen','SYN_SENT':'state-synsent','SYN_RCVD':'state-synrcvd','ESTABLISHED':'state-established','FIN_WAIT':'state-finwait','TIME_WAIT':'state-timewait','CLOSE_WAIT':'state-timewait'};el.className='tcp-state '+(map[state]||'state-closed');el.textContent=state;}
+function addTCPMsg(from,flag,detail,dir='→'){const msgs=document.getElementById('tcp-messages');const fmap={'SYN':'flag-syn','SYN-ACK':'flag-synack','ACK':'flag-ack','DATA':'flag-data','FIN':'flag-fin','RST':'flag-rst'};const msg=document.createElement('div');msg.className='tcp-message';msg.innerHTML=`<span style="color:var(--muted);font-size:.69rem;flex-shrink:0;font-weight:700;">${from}</span><span class="msg-dir">${dir}</span><span class="msg-flag ${fmap[flag]||'flag-ack'}">${flag}</span><span style="color:var(--muted);flex:1;font-size:.71rem;">${detail}</span>`;msgs.appendChild(msg);msgs.scrollTop=msgs.scrollHeight;}
+async function runTCP(){if(tcpRunning)return;tcpRunning=true;document.getElementById('tcp-run-btn').disabled=true;document.getElementById('tcp-messages').innerHTML='';document.getElementById('tcp-buffer').textContent='Esperando datos...';document.getElementById('tcp-ack-row').innerHTML='';const msg=document.getElementById('tcp-msg').value||'Hola!';const segSize=parseInt(document.getElementById('tcp-seg').value)||5;const cliISN=rand(1000,9999),srvISN=rand(1000,9999);document.getElementById('cli-isn').textContent=cliISN;document.getElementById('srv-isn').textContent=srvISN;setTCPState('cli','CLOSED');setTCPState('srv','LISTEN');await sleep(380);setTCPState('cli','SYN_SENT');addTCPMsg('Cliente','SYN',`seq=${cliISN}, SYN=1`);await sleep(680);setTCPState('srv','SYN_RCVD');addTCPMsg('Servidor','SYN-ACK',`seq=${srvISN}, ack=${cliISN+1}, SYN=1 ACK=1`,'←');await sleep(680);setTCPState('cli','ESTABLISHED');addTCPMsg('Cliente','ACK',`seq=${cliISN+1}, ack=${srvISN+1}, ACK=1`);await sleep(680);setTCPState('srv','ESTABLISHED');const segments=[];for(let i=0;i<msg.length;i+=segSize)segments.push(msg.substring(i,i+segSize));let buffer='',seq=cliISN+1;for(let i=0;i<segments.length;i++){const seg=segments[i],segLen=seg.length;addTCPMsg('Cliente','DATA',`seq=${seq}, len=${segLen}, data="${seg}"`);await sleep(580);buffer+=seg;document.getElementById('tcp-buffer').textContent=`"${buffer}"`;const pct=Math.round(((i+1)/segments.length)*100);document.getElementById('cli-progress').style.width=pct+'%';document.getElementById('cli-prog-lbl').textContent=`Enviado: ${i+1}/${segments.length} segmentos`;document.getElementById('srv-progress').style.width=pct+'%';document.getElementById('srv-prog-lbl').textContent=`Recibido: ${buffer.length}/${msg.length} bytes`;const ack=seq+segLen;addTCPMsg('Servidor','ACK',`ack=${ack} — confirmado "${seg}"`,'←');const ackRow=document.getElementById('tcp-ack-row');const badge=document.createElement('span');badge.className='badge badge-green';badge.textContent=`✓ ACK seg.${i+1}`;ackRow.appendChild(badge);seq=ack;await sleep(460);}document.getElementById('cli-prog-lbl').textContent='✅ Todos los segmentos enviados';document.getElementById('srv-prog-lbl').textContent='✅ Mensaje completo recibido';await sleep(580);setTCPState('cli','FIN_WAIT');addTCPMsg('Cliente','FIN',`seq=${seq}, FIN=1 — solicita cierre`);await sleep(680);addTCPMsg('Servidor','ACK',`ack=${seq+1} — confirma FIN`,'←');await sleep(480);addTCPMsg('Servidor','FIN',`seq=${srvISN+msg.length+1}, FIN=1 — servidor cierra`,'←');setTCPState('srv','CLOSE_WAIT');await sleep(680);addTCPMsg('Cliente','ACK',`ack=${srvISN+msg.length+2} — ACK final`);setTCPState('cli','TIME_WAIT');await sleep(800);setTCPState('cli','CLOSED');setTCPState('srv','CLOSED');tcpRunning=false;document.getElementById('tcp-run-btn').disabled=false;}
+function resetTCP(){tcpRunning=false;document.getElementById('tcp-run-btn').disabled=false;document.getElementById('tcp-messages').innerHTML='';document.getElementById('tcp-buffer').textContent='Esperando datos...';document.getElementById('tcp-ack-row').innerHTML='';document.getElementById('cli-isn').textContent='—';document.getElementById('srv-isn').textContent='—';document.getElementById('cli-progress').style.width='0%';document.getElementById('srv-progress').style.width='0%';document.getElementById('cli-prog-lbl').textContent='—';document.getElementById('srv-prog-lbl').textContent='—';setTCPState('cli','CLOSED');setTCPState('srv','LISTEN');}
+</script>
+</body>
+</html>
